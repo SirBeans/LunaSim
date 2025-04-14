@@ -121,10 +121,34 @@ function init() {
     myDiagram.toolManager.mouseMoveTools.insertAt(0, new NodeLabelDraggingTool());
 
     // add panning
-    myDiagram.toolManager.panningTool.isEnabled = true;
+    myDiagram.toolManager.panningTool.canStart = function() {
+        const e = myDiagram.lastInput;
+        return e.control && this.diagram.lastInput.left; // only pan when holding Ctrl + left mouse
+    };
     // store the last mouse-down event's position
     // disable drag selection
-    myDiagram.toolManager.dragSelectingTool.isEnabled = false;
+    myDiagram.toolManager.dragSelectingTool.isEnabled = true;
+
+    myDiagram.toolManager.dragSelectingTool.box =
+        $(go.Part,
+            { layerName: "Tool" },
+            $(go.Shape, "Rectangle",
+                {
+                    fill: null,  // light gray with transparency
+                    stroke: "#808080",
+                    strokeWidth: 1
+                })
+        );
+
+    myDiagram.toolManager.dragSelectingTool.doActivate = function() {
+        this.diagram.currentCursor = "crosshair";  // set cursor to crosshair
+        go.DragSelectingTool.prototype.doActivate.call(this);
+    };
+
+    myDiagram.toolManager.dragSelectingTool.doDeactivate = function() {
+        this.diagram.currentCursor = "";  // reset to default
+        go.DragSelectingTool.prototype.doDeactivate.call(this);
+    };
 
     // when the document is modified, add a "*" to the title
     myDiagram.addDiagramListener("Modified", e => {
