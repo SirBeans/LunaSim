@@ -519,8 +519,8 @@ function buildTemplates() {
                 // add a binding to adjust if this shape is visible based on isBiflow function
                 new go.Binding("visible", "", isBiflow),
                 {
-                    fill: "#3489eb",
-                    stroke: "#3489eb",
+                    fill: "#808080",
+                    stroke: "#808080",
                     fromArrow: "Backward",
                     scale: 2.0,
                 })
