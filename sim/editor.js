@@ -14,7 +14,7 @@ export {PERFORMANCE_MODE};
 import {closeSimErrorPopup, Simulation} from "./engine.js";
 import {translate} from "./translator.js";
 import {CurvedLinkReshapingTool} from "./CurvedLinkReshapingTool.js";
-import {showSimErrorPopup} from "engine"
+import {showSimErrorPopup} from "./engine.js"
 
 // SD is a global variable, to avoid polluting global namespace and to make the global
 // nature of the individual variables obvious.
