@@ -4,13 +4,13 @@
 
 // SIMULATION ERROR POPUP (Author: William J. Park)
 // Displays the Simulation Error Popup
-function showSimErrorPopup() {
+export function showSimErrorPopup() {
     document.getElementById("simErrorPopup").style.display = "block";
     document.getElementById("grayEffectDiv").style.display = "block";
 }
 document.getElementById("simErrorPopupDismiss").addEventListener("click", closeSimErrorPopup);
 // Closes the Simulation Error Popup
-function closeSimErrorPopup() {
+export function closeSimErrorPopup() {
     document.getElementById("simErrorPopup").style.display = "none";
     document.getElementById("grayEffectDiv").style.display = "none";
 }
