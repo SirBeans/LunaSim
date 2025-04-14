@@ -2,29 +2,61 @@
  * This file contains the main engine for the simulation.  It runs both euler's method and the RK4 method, given input in the form of a json.
  */
 
-// SIMULATION ERROR POPUP (Author: William J. Park)
-// Displays the Simulation Error Popup
-function showSimErrorPopup() {
+/**
+ *Displays the Simulation Error Popup
+ */
+export function showSimErrorPopup() {
     document.getElementById("simErrorPopup").style.display = "block";
     document.getElementById("grayEffectDiv").style.display = "block";
 }
 document.getElementById("simErrorPopupDismiss").addEventListener("click", closeSimErrorPopup);
-// Closes the Simulation Error Popup
-function closeSimErrorPopup() {
+
+/**
+ * Closes the Simulation Error Popup
+ */
+export function closeSimErrorPopup() {
     document.getElementById("simErrorPopup").style.display = "none";
     document.getElementById("grayEffectDiv").style.display = "none";
 }
 
+
+/**
+ * Represents a simulation instance.
+ */
 export class Simulation {
+    /**
+     * Creates a new Simulation.
+     * Initializes default properties: data, dt, startTime, and endTime.
+     */
     constructor() {
+        /**
+         * Simulation data.
+         * @type {*}
+         */
         this.data;
+        /**
+         * Time step of the simulation.
+         * @type {number}
+         */
         this.dt;
+        /**
+         * Start time of the simulation.
+         * @type {number|Date}
+         */
         this.startTime;
+        /**
+         * End time of the simulation.
+         * @type {number|Date}
+         */
         this.endTime;
     }
 
-    /*
-    Wrapper for eval().
+    /**
+     *Wrapper for eval() will remove -- resulting from a user subtracting a negative number EX: 1-(-1) => 1--1 => 1+1.
+     * Also removes ++ just in case. This function will use the eval function built into js to evaluate our parsed
+     * expression attempts to catch potential error, none in specific just a final failsafe
+     * @param {string} expression the parsed expression from parseAndEval
+     * @returns {number} The final value of the equation after all the math has been done
     */
     safeEval(expression) {
         // if there are two -- or two ++, remove one
@@ -39,10 +71,16 @@ export class Simulation {
         }
     }
 
-    /* 
-    Replaces names in equation with values.
-    Example: 'converter1*converter2+stock1' --> '(1)*(2)+(3)'
-    */
+    /**
+     * Replaces names in an equation with their actual values.
+     *
+     * For example: `[converter1]*[converter2]+[stock1]` becomes `(1)*(2)+(3)` based on current simulation data.
+     * It recursively evaluates and replaces nested references using stored equations or safe values.
+     *
+     * @param {string} equation - The equation string containing stock, flow, or converter names wrapped in brackets.
+     * @param {Array<string>} [history=[]] - An array used to track recursion history and prevent infinite loops.
+     * @returns {string} The equation with all names replaced by their actual values.
+     */
     parseObject(equation, history = []) {
         let objects = {} // stores all stocks, converters, and flows and their respective equation/safeval
 
@@ -75,8 +113,11 @@ export class Simulation {
         return equation;
     }
 
-    /*
-    Combines parseObject and safeEval to parse and evaluate an equation. It alerts the user if the equation is invalid.
+    /**
+     *Combines parseObject and safeEval to parse and evaluate an equation. It alerts the user if the equation is invalid.
+     *
+     * @param equation The equation associated with a given object
+     * @param {Array<string>} [history=[]] - An array used to track recursion history and prevent infinite loops.
     */
     parseAndEval(equation, history = []) {
         // Check for circular definitions
