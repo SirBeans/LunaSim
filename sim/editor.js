@@ -362,17 +362,21 @@ function buildTemplates() {
 
     myDiagram.linkTemplateMap.add("influence",
         $(go.Link,
-            { curve: go.Link.Bezier, toShortLength: 8, reshapable: true },
+            { curve: go.Link.Bezier,
+                toShortLength: 8, reshapable: true },
             new go.Binding("curviness", "curviness").makeTwoWay(),
             $(go.Shape,
-                { stroke: "orange", strokeWidth: 1.5 }),
+                {strokeWidth: 1.5 },
+                new go.Binding("stroke", "isSelected", sel => sel ? "#3489eb" : "orange").ofObject()
+            ),
             $(go.Shape,
                 {
-                    fill: "orange",
                     stroke: null,
                     toArrow: "Standard",
                     scale: 1.5
-                })
+                },
+                new go.Binding("fill", "isSelected", sel => sel ? "#3489eb" : "orange").ofObject()
+            )
         ));
 }
 
