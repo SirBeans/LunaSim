@@ -264,7 +264,21 @@ function buildTemplates() {
 
     // Node templates
     myDiagram.nodeTemplateMap.add("stock",
-        $(go.Node, nodeStyle(),
+        $(go.Node, nodeStyle(),{
+                selectionAdornmentTemplate:
+                    $(go.Adornment, "Auto",
+                        $(go.Shape,
+                            {
+                                figure: "rectangle",
+                                fill: null,
+                                stroke: "dodgerblue",
+                                strokeWidth: 5,
+                                scale: 0.9,
+                                desiredSize: new go.Size(50, 30)
+                            }),
+                        $(go.Placeholder)
+                    )
+            },
             $(go.Shape, shapeStyle(),
                 new go.Binding("fill", "label", function (label) { return isGhost(label) ? "#ffffff" : fillColor;}), // change color if ghost ($ in front of label)
                 { desiredSize: new go.Size(50, 30),
@@ -282,6 +296,21 @@ function buildTemplates() {
 
     myDiagram.nodeTemplateMap.add("cloud",
         $(go.Node, nodeStyle(),
+            {
+                selectionAdornmentTemplate:
+                    $(go.Adornment, "Auto",
+                        $(go.Shape,
+                            {
+                                figure: "Cloud",
+                                fill: null,
+                                stroke: "dodgerblue",
+                                strokeWidth: 3,
+                                scale: 0.9,
+                                desiredSize: new go.Size(30, 30)
+                            }),
+                        $(go.Placeholder)
+                    )
+            },
             $(go.Shape, shapeStyle(),
                 {
                     figure: "Cloud",
@@ -316,21 +345,35 @@ function buildTemplates() {
 
     myDiagram.nodeTemplateMap.add("variable",
         $(go.Node, nodeStyle(),
+            {
+                selectionAdornmentTemplate:
+                    $(go.Adornment, "Spot",
+                        $(go.Shape, "Ellipse",
+                            {
+                                fill: null,
+                                stroke: "dodgerblue",
+                                strokeWidth: 15,
+                                scale: 0.25
+                            }),
+                        $(go.Placeholder)
+                    )
+            },
             $(go.Shape, shapeStyle(),
-            new go.Binding("fill", "label", function (label) {return isGhost(label) ? "#ffffff" : fillColor;}), // change color if ghost ($ in front of label)
+                new go.Binding("fill", "label", function (label) { return isGhost(label) ? "#ffffff" : fillColor; }),
                 {
                     figure: "Ellipse",
                     desiredSize: new go.Size(25, 25)
                 }),
             $(go.TextBlock, textStyle(),
                 {
-                    _isNodeLabel: true,  // declare draggable by NodeLabelDraggingTool
-                    alignment: new go.Spot(0.5, 0.5, 0, 30),    // initial value
+                    _isNodeLabel: true,
+                    alignment: new go.Spot(0.5, 0.5, 0, 30),
                     isMultiline: false,
-                    textValidation: labelValidator, // make sure the label is unique
+                    textValidation: labelValidator,
                 },
                 new go.Binding("alignment", "label_offset", go.Spot.parse).makeTwoWay(go.Spot.stringify))
         ));
+
 
     // Link templates
     myDiagram.linkTemplateMap.add("flow",
