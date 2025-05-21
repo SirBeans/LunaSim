@@ -706,6 +706,7 @@ function run() {
         }       
     }
 
+
     // Looks all good!
     engineJson.start_time = parseFloat(startTime);
     engineJson.end_time = parseFloat(endTime);
@@ -734,7 +735,11 @@ function run() {
         behavior: "smooth",
     });
     document.getElementById("secondaryOpen").click();
-}
+    console.log("starting ");
+     saveDiagramAsPng(myDiagram,   "diagram.png");
+
+
+    }
 
 // function to change color of the tool button when selected (does through changing the class)
 function toolSelect(evt) {
@@ -975,6 +980,29 @@ document.getElementById("clearButton").addEventListener("click", function() {
 window.addEventListener('beforeunload', function (e) {
     if (unsavedEdits) e.preventDefault();
 });
+
+function saveDiagramAsPng(diagram, filename = "diagram.png", margin = 15) {
+    diagram.makeImageData({
+        background: "white",
+        scale: 1,
+        padding: margin,         // adds margin (in pixels) around the diagram
+        returnType: "blob",
+        callback: function(blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    });
+}
+
+
+
 
 // Exporting myDiagram
 export {data};
