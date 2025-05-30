@@ -7,7 +7,19 @@ export function translate(obj) {
     var res = {
         "stocks": {},
         "converters": {},
-    }; // the rest of the information (start and end times, dt, and integration method ae added lator in editor.js)
+        "variables":[],
+        "influences":[],
+        "valves":[],
+    };
+
+    class influence {
+        to;
+        toEq;
+        from;
+    }
+    var valves = obj.nodeDataArray.filter(node => node.category === "valve");
+
+    // the rest of the information (start and end times, dt, and integration method ae added lator in editor.js)
 
     var stockKeyToName = {}; // used for checking of a stock exists in the model (specifically in the inflows and outflows)
 
@@ -30,7 +42,11 @@ export function translate(obj) {
                 "inflows": {},
                 "outflows": {}
             };
-        } else if (node.category == "variable") {
+        }
+        if (node.category == "variable") {
+
+            res.variables.push({equation: node.equation, label: node.label});
+
             if (node.label[0] === "$") {
                 continue;
             }
@@ -40,6 +56,12 @@ export function translate(obj) {
                 "equation": node.equation
             };
         }
+
+        if (node.category == "valve") {
+            res.valves.push({equation: node.equation, label: node.label, key: node.key});
+        }
+
+
     }
 
     // add all the flows to the res object
@@ -47,7 +69,18 @@ export function translate(obj) {
         var link = obj.linkDataArray[i];
 
         if (link.category == "influence") {
-            continue;
+            var currentInfluence = new influence;
+
+            for (var h =0; h< obj.nodeDataArray.length; h++){
+                if(obj.nodeDataArray[h].key == link.to){
+                    currentInfluence.to = obj.nodeDataArray[h].key;
+                    currentInfluence.toEq = obj.nodeDataArray[h].equation;
+                }
+                if(obj.nodeDataArray[h].label == link.from){
+                    currentInfluence.from = obj.nodeDataArray[h].label;
+                }
+            }
+            res.influences.push(currentInfluence);
         }
 
         if (link.category == "flow") {

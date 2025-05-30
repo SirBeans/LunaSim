@@ -6,9 +6,9 @@
 var PERFORMANCE_MODE = false; // For testing runtime
 export {PERFORMANCE_MODE};
 
-import { Simulation } from "./engine.js";
-import { translate } from "./translator.js";
-import { CurvedLinkReshapingTool } from "./CurvedLinkReshapingTool.js";
+import {Simulation} from "./engine.js";
+import {translate} from "./translator.js";
+import {CurvedLinkReshapingTool} from "./CurvedLinkReshapingTool.js";
 
 // SD is a global variable, to avoid polluting global namespace and to make the global
 // nature of the individual variables obvious.
@@ -30,7 +30,7 @@ var unsavedEdits = false;
 var hasExportedYet = false;
 function updateSaveStatus() {
     let current = new Date();
-    document.getElementById("saveStatus").innerHTML = 
+    document.getElementById("saveStatus").innerHTML =
     `${unsavedEdits ? "Unsaved Edits!" : "No Unsaved Edits"} (Last Edit: ${formatDeltaTime(current - lastEditDate)})<br>` +
     `Last Exported: ${hasExportedYet ? formatDeltaTime(current - lastExportDate) : "-"}`;
 }
@@ -38,7 +38,7 @@ function formatDeltaTime(ms) {
     let seconds = ms / 1000;
     if (seconds < 60) return `Just Now`;
     if (seconds < 3600) return `${Math.floor(seconds/60)}m ago`;
-    
+
     let minutes = Math.floor(seconds / 60);
     let hours = Math.floor(minutes / 60);
     minutes %= 60;
@@ -48,7 +48,7 @@ function formatDeltaTime(ms) {
 updateSaveStatus();
 setInterval(updateSaveStatus, 10000);
 
-function init() {    
+function init() {
     // Since 2.2 you can also author concise templates with method chaining instead of GraphObject.make
     // For details, see https://gojs.net/latest/intro/buildingObjects.html
     const $ = go.GraphObject.make;
@@ -111,8 +111,10 @@ function init() {
                 this.archetypeNodeData = {
                     key: newNodeId,
                     category: SD.itemType,
-                    label: newNodeId
+                    label: newNodeId,
+                    color: getDefaultColor(SD.itemType)
                 };
+
                 return go.ClickCreatingTool.prototype.insertPart.call(this, loc);
             }
         });
@@ -135,7 +137,7 @@ function init() {
     myDiagram.addModelChangedListener(e => {
         // ignore unimportant Transaction events
         if (!e.isTransactionFinished) return;
-        
+
         // check for each ghost if there is a corresponding non-ghost, if not, remove the ghost
         for (var i = 0; i < myDiagram.model.nodeDataArray.length; i++) {
             if (myDiagram.model.nodeDataArray[i].category === "cloud") { // clouds don't have labels, and don't have ghosts
@@ -212,6 +214,18 @@ function init() {
     myDiagram.model = go.Model.fromJson("{ \"class\": \"GraphLinksModel\", \"linkLabelKeysProperty\": \"labelKeys\", \"nodeDataArray\": [],\"linkDataArray\": [] }"); // default if no model is loaded
 }
 
+function refreshGoJsModel() {
+    var newModelData = JSON.parse(myDiagram.model.toJson());
+    if (!myDiagram || !newModelData) {
+        console.error("Diagram or new model data is missing.");
+        return;
+    }
+    myDiagram.startTransaction("refresh model");
+    const newModel = go.Model.fromJson(newModelData);
+    myDiagram.model = newModel;
+    myDiagram.commitTransaction("refresh model");
+}
+
 function buildTemplates() {
     // COLORS (Switches depending on theme)
     var fillColor = "#f0f0f0";
@@ -266,16 +280,17 @@ function buildTemplates() {
     myDiagram.nodeTemplateMap.add("stock",
         $(go.Node, nodeStyle(),
             $(go.Shape, shapeStyle(),
-                new go.Binding("fill", "label", function (label) { return isGhost(label) ? "#ffffff" : fillColor;}), // change color if ghost ($ in front of label)
-                { desiredSize: new go.Size(50, 30),
-                    fill: "#ffcc99"
+                new go.Binding("fill", "color").makeTwoWay(),
+                {
+                    desiredSize: new go.Size(50, 30),
+                    fill: "#ffcc99" // default
                 }),
             $(go.TextBlock, textStyle(),
                 {
-                    _isNodeLabel: true,  // declare draggable by NodeLabelDraggingTool
-                    alignment: new go.Spot(0.5, 0.5, 0, 30),    // initial value
+                    _isNodeLabel: true,
+                    alignment: new go.Spot(0.5, 0.5, 0, 30),
                     isMultiline: false,
-                    textValidation: labelValidator, // make sure the label is unique
+                    textValidation: labelValidator
                 },
                 new go.Binding("alignment", "label_offset", go.Spot.parse).makeTwoWay(go.Spot.stringify))
         ));
@@ -283,9 +298,11 @@ function buildTemplates() {
     myDiagram.nodeTemplateMap.add("cloud",
         $(go.Node, nodeStyle(),
             $(go.Shape, shapeStyle(),
+                new go.Binding("fill", "color").makeTwoWay(),
                 {
                     figure: "Cloud",
-                    desiredSize: new go.Size(30, 30)
+                    desiredSize: new go.Size(30, 30),
+                    fill: "#cccccc" // default
                 })
         ));
 
@@ -297,40 +314,45 @@ function buildTemplates() {
                 alignmentFocus: go.Spot.None
             },
             $(go.Shape, shapeStyle(),
-                new go.Binding("fill", "label", function (label) {return isGhost(label) ? "#ffffff" : "#3489eb";}), // change color if ghost ($ in front of label)
-                new go.Binding("figure", "label", function (label) {return isGhost(label) ? "Circle" : "Diamond";}), // change shape if ghost ($ in front of label)
+                new go.Binding("fill", "color").makeTwoWay(),
+                new go.Binding("figure", "label", function(label) {
+                    return isGhost(label) ? "Circle" : "Diamond";
+                }),
                 {
                     figure: "Diamond",
                     desiredSize: new go.Size(15, 15),
-                    fill: "#3489eb"
+                    fill: "#3489eb" // default
                 }),
             $(go.TextBlock, textStyle(),
                 {
-                    _isNodeLabel: true,  // declare draggable by NodeLabelDraggingTool
-                    alignment: new go.Spot(0.5, 0.5, 0, 20),    // initial value
+                    _isNodeLabel: true,
+                    alignment: new go.Spot(0.5, 0.5, 0, 20),
                     isMultiline: false,
-                    textValidation: labelValidator, // make sure the label is unique
+                    textValidation: labelValidator
                 },
                 new go.Binding("alignment", "label_offset", go.Spot.parse).makeTwoWay(go.Spot.stringify))
         ));
 
+
     myDiagram.nodeTemplateMap.add("variable",
         $(go.Node, nodeStyle(),
             $(go.Shape, shapeStyle(),
-            new go.Binding("fill", "label", function (label) {return isGhost(label) ? "#ffffff" : fillColor;}), // change color if ghost ($ in front of label)
+                new go.Binding("fill", "color").makeTwoWay(),
                 {
                     figure: "Ellipse",
-                    desiredSize: new go.Size(25, 25)
+                    desiredSize: new go.Size(25, 25),
+                    fill: "#99ff99" // default
                 }),
             $(go.TextBlock, textStyle(),
                 {
-                    _isNodeLabel: true,  // declare draggable by NodeLabelDraggingTool
-                    alignment: new go.Spot(0.5, 0.5, 0, 30),    // initial value
+                    _isNodeLabel: true,
+                    alignment: new go.Spot(0.5, 0.5, 0, 30),
                     isMultiline: false,
-                    textValidation: labelValidator, // make sure the label is unique
+                    textValidation: labelValidator
                 },
                 new go.Binding("alignment", "label_offset", go.Spot.parse).makeTwoWay(go.Spot.stringify))
         ));
+
 
     // Link templates
     myDiagram.linkTemplateMap.add("flow",
@@ -338,42 +360,44 @@ function buildTemplates() {
             { toShortLength: 10 },
             new go.Binding("curviness", "curviness").makeTwoWay(),
             $(go.Shape,
+                new go.Binding("stroke", "color").makeTwoWay(),
                 {
                     stroke: "#3489eb",
-                    strokeWidth: 5 
+                    strokeWidth: 5
                 }),
             $(go.Shape,
-                // add a binding to adjust if this shape is visible based on isBiflow function
                 new go.Binding("visible", "", isBiflow),
                 {
                     fill: "#ffffff",
                     stroke: "#3489eb",
                     fromArrow: "Backward",
-                    scale: 2.0,
+                    scale: 2.0
                 }),
             $(go.Shape,
+                new go.Binding("stroke", "color").makeTwoWay(),
+                new go.Binding("fill", "color").makeTwoWay(),
                 {
-                    fill: "#3489eb",
-                    stroke: "#3489eb",
                     toArrow: "Standard",
                     scale: 2.0
                 })
         ));
+
 
     myDiagram.linkTemplateMap.add("influence",
         $(go.Link,
             { curve: go.Link.Bezier, toShortLength: 8, reshapable: true },
             new go.Binding("curviness", "curviness").makeTwoWay(),
             $(go.Shape,
+                new go.Binding("stroke", "color").makeTwoWay(),
                 { stroke: "orange", strokeWidth: 1.5 }),
             $(go.Shape,
+                new go.Binding("fill", "color").makeTwoWay(),
                 {
-                    fill: "orange",
-                    stroke: null,
                     toArrow: "Standard",
                     scale: 1.5
                 })
         ));
+
 }
 
 // set the mode (adding stock vs adding flow vs pointer etc) based on which button is clicked
@@ -399,7 +423,7 @@ function setMode(mode, itemType) {
 // populates model json with table information (not just for saving model in the end, instead gets called every time the table is updated)
 function loadTableToDiagram() {
     // get the json from the GoJS model
-    var data = myDiagram.model.toJson();  
+    var data = myDiagram.model.toJson();
     var json = JSON.parse(data);
 
     var $tbody = $('#eqTableBody');
@@ -622,12 +646,103 @@ function resetSimErrorPopup() {
     document.getElementById("simErrorPopupDismiss").innerHTML = "Dismiss"
 }*/
 
+function containsReference(equation){
+    const matches = [];
+
+    const regex = /\[(.*?)\]/g;
+    const allMatches = equation.matchAll(regex);
+
+    for (const match of allMatches) {
+        matches.push(match[1]);
+    }
+
+    return matches;
+}
+
+
 function run() {
-  
+
     loadTableToDiagram();
 
     var json = JSON.parse(myDiagram.model.toJson());
     var engineJson = translate(json);
+
+
+    for(var i = 0; i < engineJson.variables.length; i++){
+        var references = containsReference(engineJson.variables[i].equation);
+        if(references.length>0) {
+            for (var h = 0; h < references.length; h++) {
+                var exists = false;
+                for (var j = 0; j < engineJson.influences.length; j++) {
+                    if (engineJson.influences[j].to == engineJson.variables[i].label && engineJson.influences[j].from == references[h]) {
+                        exists = true;
+                    }
+                    if (engineJson.influences[j].to === engineJson.variables[i].label &&
+                        !references.includes(engineJson.influences[j].from)) {
+                        document.getElementById("simErrorPopupDesc").innerHTML =
+                            "Incorrect influence from " + engineJson.influences[j].from + " to " + engineJson.influences[j].to;
+                        showSimErrorPopup();
+                        return;
+                    }
+                }
+                if (!exists) {
+                    document.getElementById("simErrorPopupDesc").innerHTML = "Missing an influence from " + references[h] + " to " + engineJson.variables[i].label;
+                    showSimErrorPopup();
+                    return;
+                }
+            }
+        } else {
+            for (var j = 0; j < engineJson.influences.length; j++) {
+                if (engineJson.influences[j].to === engineJson.variables[i].label) {
+                    document.getElementById("simErrorPopupDesc").innerHTML =
+                        "No references in equation for " + engineJson.variables[i].label + ", but influence from " + engineJson.influences[j].from + " exists.";
+                    showSimErrorPopup();
+                    return;
+                }
+            }
+        }
+    }
+
+    for(var i =0; i<engineJson.valves.length; i++){
+        var references = containsReference(engineJson.valves[i].equation);
+        if(references.length>0) {
+            for(var j =0; j<references.length; j++){
+                var exists = false;
+                for(var h =0; h < engineJson.influences.length; h++){
+                    if (engineJson.influences[h].to == engineJson.valves[i].key && engineJson.influences[h].from == references[j]) {
+                        exists = true;
+                    }
+                    if (engineJson.influences[h].to === engineJson.valves[i].key &&
+                        !references.includes(engineJson.influences[h].from)) {
+                        document.getElementById("simErrorPopupDesc").innerHTML =
+                            "Incorrect influence from " + engineJson.influences[h].from + " to " + engineJson.influences[h].to;
+                        showSimErrorPopup();
+                        return;
+                    }
+
+                }
+                if (!exists) {
+                    document.getElementById("simErrorPopupDesc").innerHTML = "Missing an influence from " + references[j] + " to " + engineJson.valves[i].label;
+                    showSimErrorPopup();
+                    return;
+                }
+            }
+        }else {
+            for (var j = 0; j < engineJson.influences.length; j++) {
+                console.log(engineJson.influences);
+                if (engineJson.influences[j].to === engineJson.valves[i].key) {
+                    document.getElementById("simErrorPopupDesc").innerHTML =
+                        "No references in equation for " + engineJson.valves[i].label + ", but influence from " + engineJson.influences[j].from + " exists.";
+                    showSimErrorPopup();
+                    return;
+                }
+            }
+        }
+
+    }
+
+
+
 
     // get information on the start time, end time, dt, and integration method and add it to the engine json
     var startTime = document.getElementById("startTime").value;
@@ -703,7 +818,7 @@ function run() {
             document.getElementById("simErrorPopupDesc").innerHTML = "This simulation contains 1000+ steps; as such, running it may lead to lag or the website freezing. Please adjust dt or enable high step-count simulations.<br><br>If you proceed with the simulation, it may be wise to export your LunaSim project in case the website crashes.";
             showSimErrorPopup();
             return;
-        }       
+        }
     }
 
     // Looks all good!
@@ -711,7 +826,7 @@ function run() {
     engineJson.end_time = parseFloat(endTime);
     engineJson.dt = parseFloat(dt);
     engineJson.integration_method = integrationMethod;
-    
+
     sim.setData(engineJson);
 
     if (PERFORMANCE_MODE == true)
@@ -724,7 +839,7 @@ function run() {
     }
 
     console.log(data);
-  
+
     sim.reset();
 
     // Hopefully, the simulation should have successfully completed; scroll to top of page
@@ -817,7 +932,7 @@ function loadModel(evt) {
             // .Pc is where the list of "objects" in the model is stored
             // Checked via console.log testing
             // This *probably* isn't good standard but it seems to be consistent across platforms & models
-            
+
             let confirmBlankLoad = confirm("This model appears to be blank! Are you sure you want to load it?");
             if (!confirmBlankLoad) return;
         }
@@ -836,7 +951,7 @@ function loadModel(evt) {
             document.getElementById("endTime").value = 10;
             document.getElementById("dt").value = 0.1;
             document.getElementById("integrationMethod").value = "rk4";
-        }        
+        }
 
         // clear the diagram
         myDiagram.model = go.Model.fromJson("{ \"class\": \"GraphLinksModel\", \"linkLabelKeysProperty\": \"labelKeys\", \"nodeDataArray\": [],\"linkDataArray\": [] }");
@@ -949,7 +1064,7 @@ document.getElementById("clearButton").addEventListener("click", function() {
     if (confirmNewModel) {
         let doubleConfirm = confirm("Are you REALLY sure? If you want to save the project you are currently working on, press CANCEL and export it first; otherwise, the data will be cleared. You've been warned!");
         if (!doubleConfirm) return;
-        
+
         // Reset Model
         document.getElementById("startTime").value = 0;
         document.getElementById("endTime").value = 10;
@@ -967,7 +1082,7 @@ document.getElementById("clearButton").addEventListener("click", function() {
         lastExportDate = new Date();
         hasExportedYet = false;
         updateSaveStatus();
-    } 
+    }
 });
 
 // reload/close warning
@@ -978,3 +1093,180 @@ window.addEventListener('beforeunload', function (e) {
 
 // Exporting myDiagram
 export {data};
+const JAVA_MATH_FUNCTIONS = [
+    'sin()', 'cos()', 'tan()', 'asin()', 'acos()', 'atan()', 'atan2()', 'sinh()', 'cosh()', 'tanh()',
+    'exp()', 'log()', 'log10()', 'sqrt()', 'cbrt()', 'abs()', 'ceil()', 'floor()', 'round()', 'pow()',
+    'max()', 'min()', 'signum()', 'toRadians()', 'toDegrees()', 'random()', 'hypot()', 'expm1()', 'log1p()',
+    'copySign()', 'nextUp()', 'nextDown()', 'ulp()', 'IEEEremainder()', 'rint()', 'getExponent()', 'scalb()', 'fma()'
+];
+
+
+// Auto-enhance inputs in the 3rd column (Equation)
+function enhanceExistingInputs() {
+    document.querySelectorAll('#eqTableBody tr').forEach(row => {
+        const equationCell = row.children[2];
+        if (equationCell) {
+            const input = equationCell.querySelector('input');
+            if (input) enhanceEquationInput(input);
+        }
+    });
+}
+
+// Watch for new rows in the equation editor
+const observer = new MutationObserver(() => {
+    enhanceExistingInputs();
+});
+
+observer.observe(document.getElementById('eqTableBody'), {
+    childList: true,
+    subtree: true
+});
+
+// Enhance any inputs already present
+enhanceExistingInputs();
+
+function getTopMathMatches(input) {
+    const lowerInput = input.toLowerCase();
+    return JAVA_MATH_FUNCTIONS
+        .filter(func => func.toLowerCase().startsWith(lowerInput))
+        .slice(0, 5);
+}
+
+function setupAutocompleteForInputs() {
+    const $tbody = $('#eqTableBody');
+
+    // Show suggestions as the user types
+    $tbody.on('input', 'input[name="equation"]', function (e) {
+        if (e.originalEvent && ["ArrowUp", "ArrowDown", "Enter"].includes(e.originalEvent.key)) return;
+        showAutocomplete($(this));
+    });
+
+    // Handle arrow keys and Enter
+    $tbody.on('keydown', 'input[name="equation"]', function (e) {
+        const $input = $(this);
+        const dropdown = $('.autocomplete-list');
+        const items = dropdown.find('.autocomplete-item');
+        let selected = items.filter('.selected');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (selected.length === 0) {
+                items.first().addClass('selected');
+            } else {
+                const next = selected.removeClass('selected').next();
+                (next.length ? next : items.first()).addClass('selected');
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selected.length === 0) {
+                items.last().addClass('selected');
+            } else {
+                const prev = selected.removeClass('selected').prev();
+                (prev.length ? prev : items.last()).addClass('selected');
+            }
+            return;
+        }
+
+        if (e.key === 'Enter' && selected.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const cursorPos = $input[0].selectionStart;
+            const fullText = $input.val();
+
+            const match = fullText.slice(0, cursorPos).match(/(?:^|\\W)(\\w+)$/);
+            const currentFragment = match ? match[1] : "";
+            const fragmentStart = cursorPos - currentFragment.length;
+
+            const before = fullText.slice(0, fragmentStart);
+            const after = fullText.slice(cursorPos);
+            const replacement = selected.text();
+            const updated = before + replacement + after;
+
+            $input.val(updated);
+            const newCursor = before.length + replacement.length;
+            $input[0].setSelectionRange(newCursor, newCursor);
+
+            $('.autocomplete-list').remove();
+            return;
+        }
+    });
+
+    // ✅ NEW: Hide dropdown when the input field loses focus
+    $tbody.on('blur', 'input[name="equation"]', function () {
+        setTimeout(() => {
+            if (!$(':hover').hasClass('autocomplete-item')) {
+                $('.autocomplete-list').remove();
+            }
+        }, 150);
+    });
+
+    // Also remove on clicks outside
+    $(document).on('mousedown', function (e) {
+        if (!$(e.target).closest('.autocomplete-list, input[name="equation"]').length) {
+            $('.autocomplete-list').remove();
+        }
+    });
+}
+
+function showAutocomplete($input) {
+    const cursorPos = $input[0].selectionStart;
+    const fullText = $input.val();
+
+    // Match the last function fragment anywhere before the cursor (even after space/parens)
+    const match = fullText.slice(0, cursorPos).match(/(?:^|\W)(\w+)$/);
+    const currentFragment = match ? match[1] : "";
+
+    $('.autocomplete-list').remove(); // remove any existing dropdown
+
+    if (!currentFragment) return;
+
+    const matches = getTopMathMatches(currentFragment);
+    if (matches.length === 0) return;
+
+    const dropdown = $('<div class="autocomplete-list"></div>');
+    matches.forEach(match => {
+        const item = $('<div class="autocomplete-item"></div>').text(match);
+        item.on('mousedown', function (e) {
+            e.preventDefault();
+
+            const before = fullText.slice(0, cursorPos).replace(/(\w+)$/, match);
+            const after = fullText.slice(cursorPos);
+            const updated = before + after;
+
+            $input.val(updated);
+            const newCursor = before.length;
+            $input[0].setSelectionRange(newCursor, newCursor);
+
+            $('.autocomplete-list').remove();
+        });
+        dropdown.append(item);
+    });
+
+    const offset = $input.offset();
+    dropdown.css({
+        position: "absolute",
+        top: offset.top + $input.outerHeight(),
+        left: offset.left,
+        width: $input.outerWidth()
+    });
+
+    $('body').append(dropdown);
+}
+
+
+$(document).ready(() => {
+    setupAutocompleteForInputs();
+});
+
+function getDefaultColor(type) {
+    switch (type) {
+        case "stock": return "#1457d1";
+        case "variable": return "#ae28b3";
+        case "valve": return "#ff3b0e";
+        default: return "#08fadd";
+    }
+}
